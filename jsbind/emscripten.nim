@@ -88,6 +88,41 @@ type EmscriptenFocusEvent* = object
     nodeName*: array[128, char]
     id*: array[128, char]
 
+type EmscriptenFullscreenChangeEvent* = object
+    isFullscreen*: EM_BOOL
+    fullscreenEnabled*: EM_BOOL
+    nodeName*: array[128, char]
+    id*: array[128, char]
+    elementWidth*: cint
+    elementHeight*: cint
+    screenWidth*: cint
+    screenHeight*: cint
+
+type EMSCRIPTEN_FULLSCREEN_SCALE* {.size: sizeof(cint).} = enum
+    EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT = 0
+    EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH = 1
+    EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT = 2
+    EMSCRIPTEN_FULLSCREEN_SCALE_CENTER = 3
+
+type EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE* {.size: sizeof(cint).} = enum
+    EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE = 0
+    EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF = 1
+    EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF = 2
+
+type EMSCRIPTEN_FULLSCREEN_FILTERING* {.size: sizeof(cint).} = enum
+    EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT = 0
+    EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST = 1
+    EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR = 2
+
+type em_canvasresized_callback_func* = proc(eventType: cint, reserved, userData: pointer): EM_BOOL {.cdecl.}
+
+type EmscriptenFullscreenStrategy* = object
+    scaleMode*: EMSCRIPTEN_FULLSCREEN_SCALE
+    canvasResolutionScaleMode*: EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE
+    filteringMode*: EMSCRIPTEN_FULLSCREEN_FILTERING
+    canvasResizedCallback*: em_canvasresized_callback_func
+    canvasResizedCallbackUserData*: pointer
+
 type em_callback_func* = proc() {.cdecl.}
 type em_arg_callback_func* = proc(p: pointer) {.cdecl.}
 type em_str_callback_func* = proc(s: cstring) {.cdecl.}
@@ -98,6 +133,7 @@ type em_wheel_callback_func* = proc(eventType: cint, wheelEvent: ptr EmscriptenW
 type em_key_callback_func* = proc(eventType: cint, keyEvent: ptr EmscriptenKeyboardEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_focus_callback_func* = proc(eventType: cint, focusEvet: ptr EmscriptenFocusEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_webgl_context_callback* = proc(eventType: cint, reserved: pointer, userData: pointer): EM_BOOL {.cdecl.}
+type em_fullscreenchange_callback_func* = proc(eventType: cint, fullscreenChangeEvent: ptr EmscriptenFullscreenChangeEvent, userData: pointer): EM_BOOL {.cdecl.}
 
 {.push importc.}
 proc emscripten_webgl_init_context_attributes*(attributes: ptr EmscriptenWebGLContextAttributes)
@@ -133,6 +169,13 @@ proc emscripten_is_webgl_context_lost*(target: cstring): EM_BOOL
 proc emscripten_set_element_css_size*(target: cstring, width, height: cdouble): EMSCRIPTEN_RESULT
 proc emscripten_get_device_pixel_ratio*(): cdouble
 
+proc emscripten_request_fullscreen*(target: cstring, deferUntilInEventHandler: EM_BOOL): EMSCRIPTEN_RESULT
+proc emscripten_request_fullscreen_strategy*(target: cstring, deferUntilInEventHandler: EM_BOOL, fullscreenStrategy: ptr EmscriptenFullscreenStrategy): EMSCRIPTEN_RESULT
+proc emscripten_exit_fullscreen*(): EMSCRIPTEN_RESULT
+proc emscripten_enter_soft_fullscreen*(target: cstring, fullscreenStrategy: ptr EmscriptenFullscreenStrategy): EMSCRIPTEN_RESULT
+proc emscripten_exit_soft_fullscreen*(): EMSCRIPTEN_RESULT
+proc emscripten_get_fullscreen_status*(fullscreenStatus: ptr EmscriptenFullscreenChangeEvent): EMSCRIPTEN_RESULT
+proc emscripten_set_fullscreenchange_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT
 {.pop.}
 
 when not declared(addPragma):
