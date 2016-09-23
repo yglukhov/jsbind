@@ -59,7 +59,7 @@ elif defined(emscripten):
     import jsbind.emscripten
 
     type JSObj* = ref object of RootObj
-        p: cint
+        p*: cint # Internal JS handle
     type jsstring* = string
 
     proc nimem_ps(s: cint): string {.EMSCRIPTEN_KEEPALIVE.} =
