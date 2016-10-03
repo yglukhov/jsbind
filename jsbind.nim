@@ -106,7 +106,7 @@ elif defined(emscripten):
             // This function is called when JS (not native) exception is thrown
             // from within emscripten function passed as callback to some JS entity.
             // The main purpose is to log such exception with nim logger.
-            var s = "Exception: " + (e.message !== undefined) ? e.message : "Unknown";
+            var s = "Exception: " + ((e.message !== undefined) ? e.message : "Unknown");
             if (e.stack !== undefined) s += ": " + e.stack;
             var c = allocate(intArrayFromString(s), 'i8', ALLOC_NORMAL);
             _nimem_ee(c);
