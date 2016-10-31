@@ -5,7 +5,10 @@ proc unpackedName*(someProc: NimNode): string {.compileTime.} =
     if not res.isNil and res.kind == nnkPostfix:
         res = res[1]
     if not res.isNil and res.kind == nnkAccQuoted:
-        return $res[0] & $res[1]
+        result = ""
+        for c in res:
+            result &= $c
+        return
     result = $res
 
 when defined(js):
