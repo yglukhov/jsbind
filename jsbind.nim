@@ -65,17 +65,8 @@ elif defined(emscripten):
         p*: cint # Internal JS handle
     type jsstring* = string
 
-    proc nimem_ps(s: cint): string {.EMSCRIPTEN_KEEPALIVE.} =
-        result = newString(s)
-
-    proc nimem_sb(s: string): pointer {.EMSCRIPTEN_KEEPALIVE.} =
-        result = unsafeAddr s[0]
-
-    proc nimem_fs(s: string) {.EMSCRIPTEN_KEEPALIVE.} =
-        var i = 0
-        while ord(s[i]) != 0: inc i
-        let a = unsafeAddr(s)
-        a[].setLen(i)
+    proc nimem_ps(s: cint): string {.EMSCRIPTEN_KEEPALIVE.} = newString(s)
+    proc nimem_sb(s: string): pointer {.EMSCRIPTEN_KEEPALIVE.} = unsafeAddr s[0]
 
     proc nimem_ee(c: cstring) {.EMSCRIPTEN_KEEPALIVE.} =
         # Log error
@@ -84,8 +75,7 @@ elif defined(emscripten):
     proc initEmbindEnv() =
         discard EM_ASM_INT("""
         var g = ((typeof window) === 'undefined') ? global : window;
-        g._nimem_o = {};
-        g._nimem_o[0] = null;
+        g._nimem_o = {0: null};
         g._nimem_i = 0;
         g._nimem_w = function(o) {
             // Wrap a JS object `o` so that it can be used in emscripten
@@ -98,10 +88,9 @@ elif defined(emscripten):
         g._nimem_s = function(s) {
             // Wrap JS string `s` to nim string. Returns address of the
             // resulting nim string.
-            var l = s.length * 4;
-            var b = _nimem_ps(l*4);
-            stringToUTF8(s, _nimem_sb(b), l);
-            _nimem_fs(b);
+            var l = lengthBytesUTF8(s);
+            var b = _nimem_ps(l);
+            stringToUTF8(s, _nimem_sb(b), l + 1);
             return b;
         };
 
@@ -115,7 +104,7 @@ elif defined(emscripten):
             _nimem_ee(c);
             _free(c);
             throw e;
-        }
+        };
         """)
 
     initEmbindEnv()
