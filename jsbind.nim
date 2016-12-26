@@ -15,14 +15,6 @@ when defined(js):
     type JSObj* = ref object of RootObj
     type jsstring* = cstring
 
-    proc addPragma*(someProc, pragma: NimNode) =
-        ## Adds pragma to callable definition
-        var pragmaNode = someProc.pragma
-        if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
-            pragmaNode = newNimNode(nnkPragma)
-            someProc.pragma = pragmaNode
-        pragmaNode.add(pragma)
-
     macro jsimportWithName*(name: string = nil, p: untyped): typed =
         p.addPragma(newNimNode(nnkExprColonExpr).add(
             newIdentNode("importcpp"),

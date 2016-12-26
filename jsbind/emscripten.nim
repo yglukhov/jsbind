@@ -178,15 +178,6 @@ proc emscripten_get_fullscreen_status*(fullscreenStatus: ptr EmscriptenFullscree
 proc emscripten_set_fullscreenchange_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT
 {.pop.}
 
-when not declared(addPragma):
-    proc addPragma*(someProc, pragma: NimNode) =
-        ## Adds pragma to callable definition
-        var pragmaNode = someProc.pragma
-        if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
-            pragmaNode = newNimNode(nnkPragma)
-            someProc.pragma = pragmaNode
-        pragmaNode.add(pragma)
-
 macro EMSCRIPTEN_KEEPALIVE*(someProc: untyped): typed =
     result = someProc
     #[
