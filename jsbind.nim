@@ -60,9 +60,10 @@ elif defined(emscripten):
     proc nimem_ps(s: cint): string {.EMSCRIPTEN_KEEPALIVE.} = newString(s)
     proc nimem_sb(s: string): pointer {.EMSCRIPTEN_KEEPALIVE.} = unsafeAddr s[0]
 
-    proc nimem_ee(c: cstring) {.EMSCRIPTEN_KEEPALIVE.} =
-        # Log error
-        error c
+    proc nimem_ee(s: string) {.EMSCRIPTEN_KEEPALIVE.} =
+        # This function is called when wrapped js func has thrown a JS exception
+        # We need to rethrow it as nim exception
+        raise newException(Exception, s)
 
     proc initEmbindEnv() =
         discard EM_ASM_INT("""
@@ -87,15 +88,17 @@ elif defined(emscripten):
         };
 
         g._nimem_e = function(e) {
-            // This function is called when JS (not native) exception is thrown
-            // from within emscripten function passed as callback to some JS entity.
-            // The main purpose is to log such exception with nim logger.
-            var s = "Exception: " + ((e.message !== undefined) ? e.message : "Unknown");
-            if (e.stack !== undefined) s += ": " + e.stack;
-            var c = allocate(intArrayFromString(s), 'i8', ALLOC_NORMAL);
-            _nimem_ee(c);
-            _free(c);
-            throw e;
+            // This function is called when wrapped function has thrown an exception.
+            // If exception is originated from nim code, it is propagated further.
+            // If exception is originated from JS code, it is rethrown as nim exception.
+            if (typeof e !== 'number' && e !== 'longjmp') {
+                var s = "" + e.message;
+                if (e.stack) s += ": " + e.stack;
+                _nimem_ee(_nimem_s(s)); // Wrap JS exception to nim exception
+            }
+            else {
+                throw e; // Propagate nim exception
+            }
         };
         """)
 
@@ -193,7 +196,7 @@ elif defined(emscripten):
         else:
             jsConvertJSToNim(t, "a" & $i)
 
-    const wrapDynCallInTryCatch = true
+    # const wrapDynCallInTryCatch = false
 
     proc unpackFunctionArg(jsParamName: string, argsSigParts, argDefsParts, argForwardParts: openarray[string], isClosure: bool): string {.compileTime.} =
         let argsSig = "v" & argsSigParts.join()
@@ -206,8 +209,8 @@ elif defined(emscripten):
         else:
             dynCall = "Runtime.dynCall('" & argsSig & "'," & jsParamName & ",[" & argForwards & "])"
 
-        if wrapDynCallInTryCatch:
-            dynCall = "try{" & dynCall & "}catch(e){_nimem_e(e)}"
+        # if wrapDynCallInTryCatch:
+        #     dynCall = "try{" & dynCall & "}catch(e){_nimem_e(e);}"
 
         if isClosure:
             return "function(a,b){return a?function(" & argDefs & "){" & dynCall & "}:null}(getValue(" & jsParamName & ", '*'), getValue(" & jsParamName & "+4, '*'))"
@@ -292,6 +295,11 @@ elif defined(emscripten):
                 `codeNode` & ")"
         codeNode = quote do:
             packResultCode(`codeNode`)
+
+        const mayThrow = true
+        if mayThrow:
+            codeNode = quote do:
+                "try{" & `codeNode` & "}catch(e){_nimem_e(e)}"
 
         cintCall[1] = codeNode
         cdoubleCall[1] = codeNode
