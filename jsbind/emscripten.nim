@@ -205,7 +205,7 @@ proc emAsmAux*(code: string, args: NimNode, resTypeName, emResType: string): Nim
         newNimNode(nnkVarSection).add(
             newNimNode(nnkIdentDefs).add(
                 newNimNode(nnkPragmaExpr).add(
-                    newIdentNode("emintres"),
+                    newIdentNode("emasmres"),
                     newNimNode(nnkPragma).add(
                         newIdentNode("exportc")
                     )
@@ -218,14 +218,14 @@ proc emAsmAux*(code: string, args: NimNode, resTypeName, emResType: string): Nim
 
     var emitStr = ""
     if args.len == 0:
-        emitStr = "emintres = EM_ASM_" & emResType & "_V({" & code & "});"
+        emitStr = "emasmres = EM_ASM_" & emResType & "_V({" & code & "});"
     else:
         let argsSection = newNimNode(nnkLetSection)
         for i in 0 ..< args.len:
             argsSection.add(
                 newNimNode(nnkIdentDefs).add(
                     newNimNode(nnkPragmaExpr).add(
-                        newIdentNode("emintarg" & $i),
+                        newIdentNode("emasmarg" & $i),
                         newNimNode(nnkPragma).add(
                             newIdentNode("exportc")
                         )
@@ -235,9 +235,9 @@ proc emAsmAux*(code: string, args: NimNode, resTypeName, emResType: string): Nim
                 )
             )
         result.add(argsSection)
-        emitStr = "emintres = EM_ASM_" & emResType & "({" & code & "}"
+        emitStr = "emasmres = EM_ASM_" & emResType & "({" & code & "}"
         for i in 0 ..< args.len:
-            emitStr &= ", emintarg" & $i
+            emitStr &= ", emasmarg" & $i
         emitStr &= ");"
 
     result.add(
@@ -249,7 +249,7 @@ proc emAsmAux*(code: string, args: NimNode, resTypeName, emResType: string): Nim
         )
     )
 
-    result.add(newIdentNode("emintres"))
+    result.add(newIdentNode("emasmres"))
 
     result = newNimNode(nnkBlockStmt).add(
         newEmptyNode(),
@@ -290,13 +290,13 @@ proc emscripten_async_wget_data*(url: cstring, onload: proc(data: pointer, sz: c
 dumpTree:
     block:
         ensureHeaderIncluded("<emscripten.h>")
-        var emintres {.exportc.}: cint
+        var emasmres {.exportc.}: cint
         var arg1 = 0
         var arg2 = 0
         let
-            emintarg1 {.exportc.} = arg1
-            emintarg2 {.exportc.} = arg2
+            emasmarg1 {.exportc.} = arg1
+            emasmarg2 {.exportc.} = arg2
 
-        {.emit: "emintres = EM_ASM_INT({" & "asdf" & "}, emintarg1);".}
-        emintres
+        {.emit: "emasmres = EM_ASM_INT({" & "asdf" & "}, emasmarg1);".}
+        emasmres
 ]#
