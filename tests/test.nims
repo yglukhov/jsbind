@@ -9,6 +9,7 @@ when defined(emscripten):
     --clang.linkerexe:emcc
     --o:test.js
     --linedir:on
+    --d:noSignalHandler
     #--d:release
 
     proc passEmcc(s: string) =
