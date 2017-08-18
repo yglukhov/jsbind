@@ -51,6 +51,29 @@ type EmscriptenMouseEvent* = object
     canvasY*: clong
     padding*: clong
 
+type EmscriptenTouchPoint* = object
+    identifier*: clong
+    screenX*: clong
+    screenY*: clong
+    clientX*: clong
+    clientY*: clong
+    pageX*: clong
+    pageY*: clong
+    isChanged*: EM_BOOL
+    onTarget*: EM_BOOL
+    targetX*: clong
+    targetY*: clong
+    canvasX*: clong
+    canvasY*: clong
+
+type EmscriptenTouchEvent* = object
+    numTouches*: cint
+    ctrlKey*: EM_BOOL
+    shiftKey*: EM_BOOL
+    altKey*: EM_BOOL
+    metaKey*: EM_BOOL
+    touches*: array[32, EmscriptenTouchPoint]
+
 type EmscriptenUiEvent* = object
     detail*: clong
     documentBodyClientWidth*: cint
@@ -128,6 +151,7 @@ type em_arg_callback_func* = proc(p: pointer) {.cdecl.}
 type em_str_callback_func* = proc(s: cstring) {.cdecl.}
 type em_async_wget_onload_func* = proc(a: pointer, p: pointer, sz: cint) {.cdecl.}
 type em_mouse_callback_func* = proc(eventType: cint, mouseEvent: ptr EmscriptenMouseEvent, userData: pointer): EM_BOOL {.cdecl.}
+type em_touch_callback_func* = proc(eventType: cint, touchEvent: ptr EmscriptenTouchEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_ui_callback_func* = proc (eventType: cint, uiEvent: ptr EmscriptenUiEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_wheel_callback_func* = proc(eventType: cint, wheelEvent: ptr EmscriptenWheelEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_key_callback_func* = proc(eventType: cint, keyEvent: ptr EmscriptenKeyboardEvent, userData: pointer): EM_BOOL {.cdecl.}
@@ -145,6 +169,11 @@ proc emscripten_cancel_main_loop*()
 proc emscripten_set_mousedown_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
 proc emscripten_set_mouseup_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
 proc emscripten_set_mousemove_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
+
+proc emscripten_set_touchstart_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchend_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchmove_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchcancel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
 
 proc emscripten_set_wheel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_wheel_callback_func): EMSCRIPTEN_RESULT
 
