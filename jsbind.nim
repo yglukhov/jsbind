@@ -344,33 +344,8 @@ elif defined(emscripten):
         onUnhandledException = proc(msg: string) =
             discard EM_ASM_INT("throw new Error(UTF8ToString($0));", cstring(msg))
 
-proc processJSException() =
-    let e = getCurrentException()
-    when defined(js):
-        var stack: string
-        if e.isNil:
-            var cstack: cstring
-            {.emit: """
-            if (lastJSError.stack !== undefined) {
-                `cstack` = lastJSError.stack;
-            }
-            """.}
-            if cstack.isNil:
-                stack = "No stack trace available"
-            else:
-                stack = $cstack
-        else:
-            stack = getStackTrace(e)
-    else:
-        let stack = getStackTrace(e)
-    error "Exception: ", getCurrentExceptionMsg(), "\l", stack
-
-template handleJSExceptions*(body: untyped) =
-    try:
-        body
-    except:
-        processJSException()
-        raise
+template handleJSExceptions*(body: untyped) {.deprecated.} =
+    body
 
 when false:
     ## Usage example:
