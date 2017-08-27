@@ -29,9 +29,8 @@ proc sendRequest*(meth, url, body: string, headers: openarray[(string, string)],
     let oReq = newXMLHTTPRequest()
     var reqListener: proc()
     reqListener = proc () =
-        handleJSExceptions:
-            jsUnref(reqListener)
-            handler(($oReq.statusText,  $oReq.responseText))
+        jsUnref(reqListener)
+        handler(($oReq.statusText,  $oReq.responseText))
     jsRef(reqListener)
     oReq.responseType = "text"
     oReq.addEventListener("load", reqListener)
