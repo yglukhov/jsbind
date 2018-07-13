@@ -144,7 +144,7 @@ elif defined(emscripten):
         else:
             result = T(tmp)
 
-    template emAsmImpl(cintCall: untyped, cdoubleCall: untyped): stmt =
+    template emAsmImpl(cintCall: untyped, cdoubleCall: untyped): untyped =
         when declared(result):
             type R = type(result)
             when R is (float32 or float64 or float):

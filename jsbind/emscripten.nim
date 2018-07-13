@@ -8,10 +8,10 @@ type
     EM_BOOL* = cint
     EMSCRIPTEN_RESULT* = cint
 
-macro declTypeWithHeader(h: static[string]): stmt =
+macro declTypeWithHeader(h: static[string]): untyped =
     result = parseStmt("type DummyHeaderType {.importc: \"void\", header:\"" & $h & "\".} = object")
 
-template ensureHeaderIncluded(h: static[string]): stmt =
+template ensureHeaderIncluded(h: static[string]): untyped =
     block:
         declTypeWithHeader(h)
         var tht : ptr DummyHeaderType = nil
