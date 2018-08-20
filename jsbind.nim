@@ -15,7 +15,7 @@ when defined(js):
     type JSObj* = ref object of RootObj
     type jsstring* = cstring
 
-    macro jsimportWithName*(name: string = nil, p: untyped): typed =
+    macro jsimportWithName*(name: string = "", p: untyped): typed =
         p.addPragma(newNimNode(nnkExprColonExpr).add(
             newIdentNode("importcpp"),
             newLit($name)))
