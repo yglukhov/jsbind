@@ -51,6 +51,7 @@ proc foo() {.EMSCRIPTEN_KEEPALIVE.} = # now it's possible to call this function 
   discard EM_ASM_INT("""
   alert("hello, world!");
   """) # Use EM_ASM_* like you would do it in C
+```
 
 # How jsbind works
 When compiling to JavaScript, `jsbind` does almost nothing, translating its pragmas to corresponding `importc`, `importcpp`, etc. Basically there is no runtime cost for such bindings. The real magic happens when compiling to Emscripten. The imported functions are wrapped to `EM_ASM_*` calls, inside which the arguments are unpacked to JavaScript types as needed, and their return values are packed back to Asm.js.
