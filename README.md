@@ -45,6 +45,12 @@ proc sendRequest*(meth, url, body: string, headers: openarray[(string, string)],
 
 # Low-level Emscripten bindings
 `jsbind.emscripten` module defines the types and functions that emscripten defines along with some useful macros and pragmas such as `EM_ASM_INT`, `EM_ASM_FLOAT`, `EMSCRIPTEN_KEEPALIVE`, etc.
+```nim
+import jsbind.emscripten
+proc foo() {.EMSCRIPTEN_KEEPALIVE.} = # now it's possible to call this function from JS
+  discard EM_ASM_INT("""
+  alert("hello, world!");
+  """) # Use EM_ASM_* like you would do it in C
 
 # How jsbind works
 When compiling to JavaScript, `jsbind` does almost nothing, translating its pragmas to corresponding `importc`, `importcpp`, etc. Basically there is no runtime cost for such bindings. The real magic happens when compiling to Emscripten. The imported functions are wrapped to `EM_ASM_*` calls, inside which the arguments are unpacked to JavaScript types as needed, and their return values are packed back to Asm.js.
