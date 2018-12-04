@@ -216,7 +216,13 @@ macro EMSCRIPTEN_KEEPALIVE*(someProc: untyped): typed =
         StrLit __attribute__((used)) $# $#$#
     ]#
     result.addPragma(newIdentNode("exportc"))
-    result.addPragma(newNimNode(nnkExprColonExpr).add(
+    # emcc mangle cpp function names. This code fix it
+    when defined(cpp):
+        result.addPragma(newNimNode(nnkExprColonExpr).add(
+            newIdentNode("codegenDecl"),
+            newLit("__attribute__((used)) extern \"C\" $# $#$#")))
+    else:
+        result.addPragma(newNimNode(nnkExprColonExpr).add(
             newIdentNode("codegenDecl"),
             newLit("__attribute__((used)) $# $#$#")))
 
