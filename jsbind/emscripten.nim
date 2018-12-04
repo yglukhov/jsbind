@@ -216,9 +216,21 @@ macro EMSCRIPTEN_KEEPALIVE*(someProc: untyped): typed =
         StrLit __attribute__((used)) $# $#$#
     ]#
     result.addPragma(newIdentNode("exportc"))
-    result.addPragma(newNimNode(nnkExprColonExpr).add(
+    # emcc mangle cpp function names. This code fix it
+    result.addPragma(
+        newNimNode(nnkExprColonExpr).add(
             newIdentNode("codegenDecl"),
-            newLit("__attribute__((used)) $# $#$#")))
+            newLit("""
+            
+            #if __cplusplus
+            #define keepEmccNoMagled __attribute__((used)) extern "C"
+            #else 
+            #define keepEmccNoMagled __attribute__((used))  
+            #endif 
+            keepEmccNoMagled $# $#$#"""
+            )
+        )
+    )
 
 template EM_ASM*(code: static[string]) =
     ensureHeaderIncluded("<emscripten.h>")
