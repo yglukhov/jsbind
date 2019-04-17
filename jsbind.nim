@@ -325,7 +325,7 @@ elif defined(emscripten):
         else:
             GC_unref(e)
 
-    macro jsimportWithName*(name: string = nil, p: untyped): typed =
+    macro jsimportWithName*(name: string = "", p: untyped): typed =
         jsImportAux(p, true, $name)
 
     macro jsimport*(p: untyped): typed =
