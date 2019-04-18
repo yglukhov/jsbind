@@ -166,33 +166,33 @@ proc emscripten_webgl_make_context_current*(context: EMSCRIPTEN_WEBGL_CONTEXT_HA
 proc emscripten_set_main_loop*(f: em_callback_func, fps, simulate_infinite_loop: cint)
 proc emscripten_cancel_main_loop*()
 
-proc emscripten_set_mousedown_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_mouseup_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_mousemove_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_mousedown_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_mouseup_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_mousemove_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT
 
-proc emscripten_set_touchstart_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_touchend_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_touchmove_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_touchcancel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchstart_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchend_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchmove_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_touchcancel_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT
 
-proc emscripten_set_wheel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_wheel_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_wheel_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_wheel_callback_func): EMSCRIPTEN_RESULT
 
-proc emscripten_set_resize_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_scroll_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_resize_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_scroll_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT
 
 proc emscripten_get_mouse_status*(mouseState: ptr EmscriptenMouseEvent): EMSCRIPTEN_RESULT
 
 proc emscripten_async_wget_data*(url: cstring, arg: pointer, onload: em_async_wget_onload_func, onerror: em_arg_callback_func)
 
-proc emscripten_set_keypress_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_keydown_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_keyup_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_keypress_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_keydown_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_keyup_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT
 
-proc emscripten_set_blur_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_focus_callback_func): EMSCRIPTEN_RESULT
-proc emscripten_set_focus_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_focus_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_blur_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_focus_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_focus_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_focus_callback_func): EMSCRIPTEN_RESULT
 
-proc emscripten_set_webglcontextlost_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_webgl_context_callback): EMSCRIPTEN_RESULT
-proc emscripten_set_webglcontextrestored_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_webgl_context_callback): EMSCRIPTEN_RESULT
+proc emscripten_set_webglcontextlost_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_webgl_context_callback): EMSCRIPTEN_RESULT
+proc emscripten_set_webglcontextrestored_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_webgl_context_callback): EMSCRIPTEN_RESULT
 proc emscripten_is_webgl_context_lost*(target: cstring): EM_BOOL
 
 proc emscripten_set_element_css_size*(target: cstring, width, height: cdouble): EMSCRIPTEN_RESULT
@@ -204,8 +204,41 @@ proc emscripten_exit_fullscreen*(): EMSCRIPTEN_RESULT
 proc emscripten_enter_soft_fullscreen*(target: cstring, fullscreenStrategy: ptr EmscriptenFullscreenStrategy): EMSCRIPTEN_RESULT
 proc emscripten_exit_soft_fullscreen*(): EMSCRIPTEN_RESULT
 proc emscripten_get_fullscreen_status*(fullscreenStatus: ptr EmscriptenFullscreenChangeEvent): EMSCRIPTEN_RESULT
-proc emscripten_set_fullscreenchange_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT
+proc emscripten_set_fullscreenchange_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT
 {.pop.}
+
+# backward compatibility with emcc 1.37
+proc emscripten_set_mousedown_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_mousedown_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_mouseup_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_mouseup_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_mousemove_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_mouse_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_mousemove_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_touchstart_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_touchstart_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_touchend_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_touchend_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_touchmove_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_touchmove_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_touchcancel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_touchcancel_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_keypress_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_keypress_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_keydown_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_keydown_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_keyup_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_keyup_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_blur_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_focus_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_blur_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_focus_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_focus_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_focus_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_webglcontextlost_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_webgl_context_callback): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_webglcontextlost_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_webglcontextrestored_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_webgl_context_callback): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_webglcontextrestored_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_fullscreenchange_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_fullscreenchange_callback_on_thread(target, userData, useCapture, callback)
+
 
 macro EMSCRIPTEN_KEEPALIVE*(someProc: untyped): typed =
     result = someProc
