@@ -307,9 +307,7 @@ elif defined(emscripten):
         p.body = newCall(bindSym"emAsmImpl", cintCall, cdoubleCall)
         p.addPragma(newIdentNode("inline"))
         #echo repr(p)
-
         result = wrapIntoPragmaScope(p, "stackTrace", "off")
-
 
     template jsRef*(e: typed) =
         when e is (proc):
