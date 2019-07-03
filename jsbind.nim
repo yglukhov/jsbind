@@ -1,7 +1,7 @@
 import macros, strutils, logging
 
 proc unpackedName*(someProc: NimNode): string {.compileTime.} =
-    var res = someProc.name
+    var res = someProc[0]
     if not res.isNil and res.kind == nnkPostfix:
         res = res[1]
     if not res.isNil and res.kind == nnkAccQuoted:
@@ -306,8 +306,15 @@ elif defined(emscripten):
 
         p.body = newCall(bindSym"emAsmImpl", cintCall, cdoubleCall)
         p.addPragma(newIdentNode("inline"))
-        #echo repr(p)
+        # echo repr(p)
+
         result = wrapIntoPragmaScope(p, "stackTrace", "off")
+
+        if "responseType" in pName or "responseType" == pName:
+            echo "responseType\n", repr(result)
+            # echo pName
+            # echo treeRepr(p)
+            # raise
 
     template jsRef*(e: typed) =
         when e is (proc):
@@ -338,7 +345,7 @@ elif defined(emscripten):
         jsImportAux(p, false, $name)
 
     macro jsimportProp*(p: untyped): typed =
-        jsImportAux(p, true, p.unpackedName, true)
+        result = jsImportAux(p, true, p.unpackedName, true)
 
     proc setupUnhandledExceptionHandler*() =
         onUnhandledException = proc(msg: string) =
