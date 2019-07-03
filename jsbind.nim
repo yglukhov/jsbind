@@ -1,7 +1,7 @@
 import macros, strutils, logging
 
 proc unpackedName*(someProc: NimNode): string {.compileTime.} =
-    var res = someProc.name
+    var res = someProc[0]
     if not res.isNil and res.kind == nnkPostfix:
         res = res[1]
     if not res.isNil and res.kind == nnkAccQuoted:
