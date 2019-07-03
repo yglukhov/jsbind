@@ -306,15 +306,10 @@ elif defined(emscripten):
 
         p.body = newCall(bindSym"emAsmImpl", cintCall, cdoubleCall)
         p.addPragma(newIdentNode("inline"))
-        # echo repr(p)
+        #echo repr(p)
 
         result = wrapIntoPragmaScope(p, "stackTrace", "off")
 
-        if "responseType" in pName or "responseType" == pName:
-            echo "responseType\n", repr(result)
-            # echo pName
-            # echo treeRepr(p)
-            # raise
 
     template jsRef*(e: typed) =
         when e is (proc):
@@ -345,7 +340,7 @@ elif defined(emscripten):
         jsImportAux(p, false, $name)
 
     macro jsimportProp*(p: untyped): typed =
-        result = jsImportAux(p, true, p.unpackedName, true)
+        jsImportAux(p, true, p.unpackedName, true)
 
     proc setupUnhandledExceptionHandler*() =
         onUnhandledException = proc(msg: string) =
