@@ -340,6 +340,9 @@ elif defined(emscripten):
     macro jsimportProp*(p: untyped): typed =
         jsImportAux(p, true, p.unpackedName, true)
 
+    macro jsimportPropWithName*(name: string = "", p: untyped): typed =
+        jsImportAux(p, true, $name, true)
+
     proc setupUnhandledExceptionHandler*() =
         onUnhandledException = proc(msg: string) =
             discard EM_ASM_INT("throw new Error(UTF8ToString($0));", cstring(msg))
