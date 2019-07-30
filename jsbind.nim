@@ -83,7 +83,9 @@ elif defined(emscripten):
             // resulting nim string.
             var l = lengthBytesUTF8(s);
             var b = _nimem_ps(l);
-            stringToUTF8(s, _nimem_sb(b), l + 1);
+            if (l != 0) {
+                stringToUTF8(s, _nimem_sb(b), l + 1);
+            }
             return b;
         };
 
