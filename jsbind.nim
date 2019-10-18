@@ -207,9 +207,9 @@ elif defined(emscripten):
         var dynCall = ""
         if isClosure:
             let argForwardsWithEnv = (@argForwardParts & "b").join(",")
-            dynCall = "Runtime.dynCall(b?'" & argsSig & "i':'" & argsSig & "',a,b?[" & argForwardsWithEnv & "]:[" & argForwards & "])"
+            dynCall = "dynCall(b?'" & argsSig & "i':'" & argsSig & "',a,b?[" & argForwardsWithEnv & "]:[" & argForwards & "])"
         else:
-            dynCall = "Runtime.dynCall('" & argsSig & "'," & jsParamName & ",[" & argForwards & "])"
+            dynCall = "dynCall('" & argsSig & "'," & jsParamName & ",[" & argForwards & "])"
 
         # if wrapDynCallInTryCatch:
         #     dynCall = "try{" & dynCall & "}catch(e){_nimem_e(e);}"
