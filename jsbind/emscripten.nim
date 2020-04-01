@@ -2,19 +2,12 @@ when not defined(emscripten):
     {.error: "emscripten module may be imported only when compiling to emscripten target".}
 
 import macros
+import minify
 
 type
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE* = cint
     EM_BOOL* = cint
     EMSCRIPTEN_RESULT* = cint
-
-macro declTypeWithHeader(h: static[string]): untyped =
-    result = parseStmt("type DummyHeaderType {.importc: \"void\", header:\"" & $h & "\".} = object")
-
-template ensureHeaderIncluded(h: static[string]): untyped =
-    block:
-        declTypeWithHeader(h)
-        var tht : ptr DummyHeaderType = nil
 
 type EmscriptenWebGLContextAttributes* = object
     alpha*: EM_BOOL
@@ -222,6 +215,12 @@ proc emscripten_set_touchmove_callback*(target: cstring, userData: pointer, useC
     emscripten_set_touchmove_callback_on_thread(target, userData, useCapture, callback)
 proc emscripten_set_touchcancel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_touch_callback_func): EMSCRIPTEN_RESULT {.inline.} =
     emscripten_set_touchcancel_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_wheel_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_wheel_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_wheel_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_resize_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_resize_callback_on_thread(target, userData, useCapture, callback)
+proc emscripten_set_scroll_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_scroll_callback_on_thread(target, userData, useCapture, callback)
 proc emscripten_set_keypress_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT {.inline.} =
     emscripten_set_keypress_callback_on_thread(target, userData, useCapture, callback)
 proc emscripten_set_keydown_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_key_callback_func): EMSCRIPTEN_RESULT {.inline.} =
@@ -259,76 +258,85 @@ macro EMSCRIPTEN_KEEPALIVE*(someProc: untyped): typed =
             newIdentNode("codegenDecl"),
             newLit("__attribute__((used)) $# $#$#")))
 
-template EM_ASM*(code: static[string]) =
-    ensureHeaderIncluded("<emscripten.h>")
-    {.emit: "EM_ASM(" & code & ");".}
+const oldEmAsm = defined(jsbindNoEmJs)
 
-proc emAsmAux*(code: string, args: NimNode, resTypeName, emResType: string): NimNode =
-    #echo "CODE: ", code
+when oldEmAsm:
+    macro declTypeWithHeader(h: static[string]): untyped =
+        result = parseStmt("type DummyHeaderType {.importc: \"void\", header:\"" & $h & "\".} = object")
 
-    result = newNimNode(nnkStmtList)
-    result.add(newCall(bindSym "ensureHeaderIncluded", newLit("<emscripten.h>")))
+    template ensureHeaderIncluded(h: static[string]): untyped =
+        block:
+            declTypeWithHeader(h)
+            var tht : ptr DummyHeaderType = nil
 
-    result.add(
-        newNimNode(nnkVarSection).add(
-            newNimNode(nnkIdentDefs).add(
-                newNimNode(nnkPragmaExpr).add(
-                    newIdentNode("emasmres"),
-                    newNimNode(nnkPragma).add(
-                        newIdentNode("exportc")
-                    )
-                ),
-                newIdentNode(resTypeName),
-                newEmptyNode()
-            )
-        )
-    )
+    template EM_ASM*(code: static[string]) =
+        ensureHeaderIncluded("<emscripten.h>")
+        {.emit: "EM_ASM(" & code & ");".}
 
-    var emitStr = ""
-    if args.len == 0:
-        emitStr = "emasmres = EM_ASM_" & emResType & "_V({" & code & "});"
-    else:
-        let argsSection = newNimNode(nnkLetSection)
-        for i in 0 ..< args.len:
-            argsSection.add(
+    proc emAsmAux*(code: string, args: NimNode, resTypeName, emResType: string): NimNode =
+        result = newNimNode(nnkStmtList)
+        result.add(newCall(bindSym "ensureHeaderIncluded", newLit("<emscripten.h>")))
+
+        result.add(
+            newNimNode(nnkVarSection).add(
                 newNimNode(nnkIdentDefs).add(
                     newNimNode(nnkPragmaExpr).add(
-                        newIdentNode("emasmarg" & $i),
+                        newIdentNode("emasmres"),
                         newNimNode(nnkPragma).add(
                             newIdentNode("exportc")
                         )
                     ),
-                    newEmptyNode(),
-                    args[i]
+                    newIdentNode(resTypeName),
+                    newEmptyNode()
                 )
             )
-        result.add(argsSection)
-        emitStr = "emasmres = EM_ASM_" & emResType & "({" & code & "}"
-        for i in 0 ..< args.len:
-            emitStr &= ", emasmarg" & $i
-        emitStr &= ");"
+        )
 
-    result.add(
-        newNimNode(nnkPragma).add(
-            newNimNode(nnkExprColonExpr).add(
-                newIdentNode("emit"),
-                newLit(emitStr)
+        var emitStr = ""
+        if args.len == 0:
+            emitStr = "emasmres = EM_ASM_" & emResType & "_V({" & code & "});"
+        else:
+            let argsSection = newNimNode(nnkLetSection)
+            for i in 0 ..< args.len:
+                argsSection.add(
+                    newNimNode(nnkIdentDefs).add(
+                        newNimNode(nnkPragmaExpr).add(
+                            newIdentNode("emasmarg" & $i),
+                            newNimNode(nnkPragma).add(
+                                newIdentNode("exportc")
+                            )
+                        ),
+                        newEmptyNode(),
+                        args[i]
+                    )
+                )
+            result.add(argsSection)
+            emitStr = "emasmres = EM_ASM_" & emResType & "({" & code & "}"
+            for i in 0 ..< args.len:
+                emitStr &= ", emasmarg" & $i
+            emitStr &= ");"
+
+        result.add(
+            newNimNode(nnkPragma).add(
+                newNimNode(nnkExprColonExpr).add(
+                    newIdentNode("emit"),
+                    newLit(emitStr)
+                )
             )
         )
-    )
 
-    result.add(newIdentNode("emasmres"))
+        result.add(newIdentNode("emasmres"))
 
-    result = newNimNode(nnkBlockStmt).add(
-        newEmptyNode(),
-        result
-    )
+        result = newNimNode(nnkBlockStmt).add(
+            newEmptyNode(),
+            result
+        )
 
-macro EM_ASM_INT*(code: static[string], args: varargs[typed]): cint =
-    result = emAsmAux(code, args, "cint", "INT")
+    macro EM_ASM_INT*(code: static[string], args: varargs[typed]): cint =
+        result = emAsmAux(code, args, "cint", "INT")
 
-macro EM_ASM_DOUBLE*(code: static[string], args: varargs[typed]): cdouble =
-    result = emAsmAux(code, args, "cdouble", "DOUBLE")
+    macro EM_ASM_DOUBLE*(code: static[string], args: varargs[typed]): cdouble =
+        result = emAsmAux(code, args, "cdouble", "DOUBLE")
 
 proc emscripten_async_wget_data*(url: cstring, onload: proc(data: pointer, sz: cint), onerror: proc()) =
     ## Helper wrapper for emscripten_async_wget_data to pass nim closures around
@@ -353,6 +361,131 @@ proc emscripten_async_wget_data*(url: cstring, onload: proc(data: pointer, sz: c
         c.onerror()
 
     emscripten_async_wget_data(url, cast[pointer](ctx), onLoadWrapper, onErrorWrapper)
+
+proc skipStmtList(n: NimNode): NimNode =
+    result = n
+    while result.kind == nnkStmtList and result.len == 1:
+        result = result[0]
+
+var procNameCounter {.compileTime.} = 0
+
+proc concatStrings(args: varargs[string]): string =
+    for a in args: result &= a
+
+iterator arguments(formalParams: NimNode): tuple[idx: int, name, typ, default: NimNode] =
+  formalParams.expectKind(nnkFormalParams)
+  var iParam = 0
+  for i in 1 ..< formalParams.len:
+    let pp = formalParams[i]
+    for j in 0 .. pp.len - 3:
+      yield (iParam, pp[j], copyNimTree(pp[^2]), pp[^1])
+      inc iParam
+
+proc cTypeName(T: typedesc): string =
+    when T is cstring:
+        "char*"
+    elif T is cint:
+        "int"
+    elif T is cfloat:
+        "float"
+    elif T is cdouble:
+        "double"
+    elif T is pointer:
+        "void*"
+    elif T is ptr:
+        "void*"
+    else:
+        {.error: "Ensupported type: " & $T.}
+
+proc escapeJs(s: string, escapeDollarWith = "$"): string {.compileTime.} =
+    result = ""
+    for c in s:
+        case c
+        of '\a': result.add "\\a" # \x07
+        of '\b': result.add "\\b" # \x08
+        of '\t': result.add "\\t" # \x09
+        of '\L': result.add "\\n" # \x0A
+        of '\r': result.add "\\r" # \x0A
+        of '\v': result.add "\\v" # \x0B
+        of '\f': result.add "\\f" # \x0C
+        of '\e': result.add "\\e" # \x1B
+        of '\\': result.add("\\\\")
+        of '\'': result.add("\\'")
+        of '\"': result.add("\\\"")
+        of '$': result.add(escapeDollarWith)
+        else: result.add(c)
+
+proc declareEmJsExporter(cName, paramStr, jsImpl: static[string]) =
+    const code = jsImpl.minifyJs().escapeJs()
+    proc theExporter() {.importc: cName, codegenDecl: """__attribute__((used, visibility("default"))) const char* """ & cName & "() { return \"(" & paramStr & ")<::>{" & code & "}\"; }\n".}
+    theExporter()
+
+macro EM_JS*(p: untyped): untyped =
+    p.expectKind(nnkProcDef)
+    let jsImpl = p.body.skipStmtList()
+    jsImpl.expectKind(nnkStrLit)
+    var procName: string
+    when not defined(release):
+        procName = $p.name & "_"
+    else:
+        procName = "jsbind"
+
+    procName &= $procNameCounter
+    inc procNameCounter
+
+    let importedProc = copyNimTree(p)
+
+    importedProc.body = newEmptyNode()
+    importedProc.addPragma(newTree(nnkExprColonExpr, ident"importc", newLit(procName)))
+    importedProc.addPragma(ident"cdecl")
+
+    result = newNimNode(nnkStmtList)
+    result.add(importedProc)
+
+    var paramStr = newCall(bindSym"concatStrings")
+
+    let exportedProcCIdent = newLit("__em_js__" & procName)
+    # let exportedProcIdent = ident("em_js_" & procName)
+    for (i, name, typ, _) in arguments(importedProc.params):
+        if i != 0:
+            paramStr.add(newLit(","))
+        paramStr.add(newCall(bindSym"cTypeName", typ))
+        paramStr.add(newLit(" " & $name))
+
+    let declareEmJsExporter = bindSym("declareEmJsExporter")
+
+    result.add quote do:
+        `declareEmJsExporter`(`exportedProcCIdent`, `paramStr`, `jsImpl`)
+
+when not oldEmAsm:
+    import strutils
+    proc emAsmAux*(code: string, args: NimNode, resTypeName: string): NimNode =
+        let prcName = genSym(nskProc, "emasm")
+        var code = code
+        var nimProcArgs: seq[NimNode]
+        let theCall = newCall(prcName)
+        nimProcArgs.add ident(resTypeName)
+        var i = 0
+        for a in args:
+            let argTyp = newCall(ident"typeof", a)
+            nimProcArgs.add(newIdentDefs(ident("a" & $i), argTyp))
+            code = code.replace("$" & $i, "a" & $i)
+            theCall.add(a)
+            inc i
+
+        let theProc = newProc(prcName, nimProcArgs, newLit(code), nnkProcDef)
+        result = newNimNode(nnkStmtListExpr)
+        result.add(newCall(bindSym"EM_JS", theProc))
+        result.add(theCall)
+
+    macro EM_ASM_INT*(code: static[string], args: varargs[typed]): cint =
+        result = emAsmAux(code, args, "cint")
+
+    macro EM_ASM_DOUBLE*(code: static[string], args: varargs[typed]): cdouble =
+        result = emAsmAux(code, args, "cdouble")
+
+    macro EM_ASM*(code: static[string], args: varargs[typed]) =
+        result = emAsmAux(code, args, "void")
 
 #[
 dumpTree:
