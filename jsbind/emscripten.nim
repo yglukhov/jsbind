@@ -78,6 +78,10 @@ type EmscriptenUiEvent* = object
     scrollTop*: cint
     scrollLeft*: cint
 
+type EmscriptenOrientationChangeEvent* = object
+    orientationIndex*: cint
+    orientationAngle*: cint
+
 type EmscriptenWheelEvent* = object
     mouse*: EmscriptenMouseEvent
     deltaX*: cdouble
@@ -139,13 +143,20 @@ type EmscriptenFullscreenStrategy* = object
     canvasResizedCallback*: em_canvasresized_callback_func
     canvasResizedCallbackUserData*: pointer
 
+const EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY*    = 1
+const EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY*  = 2
+const EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY*   = 4
+const EMSCRIPTEN_ORIENTATION_LANDSCAPE_SECONDARY* = 8
+
+
 type em_callback_func* = proc() {.cdecl.}
 type em_arg_callback_func* = proc(p: pointer) {.cdecl.}
 type em_str_callback_func* = proc(s: cstring) {.cdecl.}
 type em_async_wget_onload_func* = proc(a: pointer, p: pointer, sz: cint) {.cdecl.}
 type em_mouse_callback_func* = proc(eventType: cint, mouseEvent: ptr EmscriptenMouseEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_touch_callback_func* = proc(eventType: cint, touchEvent: ptr EmscriptenTouchEvent, userData: pointer): EM_BOOL {.cdecl.}
-type em_ui_callback_func* = proc (eventType: cint, uiEvent: ptr EmscriptenUiEvent, userData: pointer): EM_BOOL {.cdecl.}
+type em_ui_callback_func* = proc(eventType: cint, uiEvent: ptr EmscriptenUiEvent, userData: pointer): EM_BOOL {.cdecl.}
+type em_orientationchange_callback_func* = proc(eventType: cint, uiEvent: ptr EmscriptenOrientationChangeEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_wheel_callback_func* = proc(eventType: cint, wheelEvent: ptr EmscriptenWheelEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_key_callback_func* = proc(eventType: cint, keyEvent: ptr EmscriptenKeyboardEvent, userData: pointer): EM_BOOL {.cdecl.}
 type em_focus_callback_func* = proc(eventType: cint, focusEvet: ptr EmscriptenFocusEvent, userData: pointer): EM_BOOL {.cdecl.}
@@ -173,6 +184,8 @@ proc emscripten_set_wheel_callback_on_thread*(target: cstring, userData: pointer
 proc emscripten_set_resize_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT
 proc emscripten_set_scroll_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_ui_callback_func): EMSCRIPTEN_RESULT
 
+proc emscripten_set_orientationchange_callback_on_thread*(userData: pointer, useCapture: EM_BOOL, callback: em_orientationchange_callback_func): EMSCRIPTEN_RESULT
+
 proc emscripten_get_mouse_status*(mouseState: ptr EmscriptenMouseEvent): EMSCRIPTEN_RESULT
 
 proc emscripten_async_wget_data*(url: cstring, arg: pointer, onload: em_async_wget_onload_func, onerror: em_arg_callback_func)
@@ -198,6 +211,8 @@ proc emscripten_enter_soft_fullscreen*(target: cstring, fullscreenStrategy: ptr 
 proc emscripten_exit_soft_fullscreen*(): EMSCRIPTEN_RESULT
 proc emscripten_get_fullscreen_status*(fullscreenStatus: ptr EmscriptenFullscreenChangeEvent): EMSCRIPTEN_RESULT
 proc emscripten_set_fullscreenchange_callback_on_thread*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT
+
+proc emscripten_lock_orientation*(allowedOrientations: cint): EMSCRIPTEN_RESULT
 {.pop.}
 
 # backward compatibility with emcc 1.37
@@ -237,6 +252,9 @@ proc emscripten_set_webglcontextrestored_callback*(target: cstring, userData: po
     emscripten_set_webglcontextrestored_callback_on_thread(target, userData, useCapture, callback)
 proc emscripten_set_fullscreenchange_callback*(target: cstring, userData: pointer, useCapture: EM_BOOL, callback: em_fullscreenchange_callback_func): EMSCRIPTEN_RESULT {.inline.} =
     emscripten_set_fullscreenchange_callback_on_thread(target, userData, useCapture, callback)
+
+proc emscripten_set_orientationchange_callback*(userData: pointer, useCapture: EM_BOOL, callback: em_orientationchange_callback_func): EMSCRIPTEN_RESULT {.inline.} =
+    emscripten_set_orientationchange_callback_on_thread(userData, useCapture, callback)
 
 
 macro EMSCRIPTEN_KEEPALIVE*(someProc: untyped): typed =
