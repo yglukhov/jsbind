@@ -1,4 +1,4 @@
-import macros, strutils, logging
+import macros, strutils
 
 proc unpackedName*(someProc: NimNode): string {.compileTime.} =
     var res = someProc[0]
@@ -50,8 +50,11 @@ when defined(js):
     template jsRef*(e: typed) = discard
     template jsUnref*(e: typed) = discard
 
-elif defined(emscripten):
-    import jsbind.emscripten
+elif defined(emscripten) or defined(wasm):
+    when defined(emscripten):
+        import jsbind/emscripten
+    else:
+        import jsbind/wasmrt_glue
 
     type JSObj* = ref object of RootObj
         p*: cint # Internal JS handle
@@ -65,44 +68,89 @@ elif defined(emscripten):
         # We need to rethrow it as nim exception
         raise newException(Exception, s)
 
-    proc initEmbindEnv() =
-        discard EM_ASM_INT("""
-        var g = ((typeof window) === 'undefined') ? global : window;
-        g._nimem_o = {0: null};
-        g._nimem_i = 0;
-        g._nimem_w = function(o) {
-            // Wrap a JS object `o` so that it can be used in emscripten
-            // functions. Returns an int handle to the wrapped object.
-            if (o === null) return 0;
-            g._nimem_o[++g._nimem_i] = o;
-            return g._nimem_i;
-        };
+    when defined(emscripten):
+        proc initEmbindEnv() =
+            discard EM_ASM_INT("""
+            var g = ((typeof window) === 'undefined') ? global : window;
+            g._nimem_o = {0: null};
+            g._nimem_i = 0;
+            g._nimem_w = function(o) {
+                // Wrap a JS object `o` so that it can be used in emscripten
+                // functions. Returns an int handle to the wrapped object.
+                if (o === null) return 0;
+                g._nimem_o[++g._nimem_i] = o;
+                return g._nimem_i;
+            };
 
-        g._nimem_s = function(s) {
-            // Wrap JS string `s` to nim string. Returns address of the
-            // resulting nim string.
-            var l = lengthBytesUTF8(s);
-            var b = _nimem_ps(l);
-            if (l != 0) {
-                stringToUTF8(s, _nimem_sb(b), l + 1);
-            }
-            return b;
-        };
+            g._nimem_s = function(s) {
+                // Wrap JS string `s` to nim string. Returns address of the
+                // resulting nim string.
+                var l = lengthBytesUTF8(s);
+                var b = _nimem_ps(l);
+                if (l != 0) {
+                    stringToUTF8(s, _nimem_sb(b), l + 1);
+                }
+                return b;
+            };
 
-        g._nimem_e = function(e) {
-            // This function is called when wrapped function has thrown an exception.
-            // If exception is originated from nim code, it is propagated further.
-            // If exception is originated from JS code, it is rethrown as nim exception.
-            if (typeof e !== 'number' && e !== 'longjmp') {
-                var s = "" + e.message;
-                if (e.stack) s += ": " + e.stack;
-                _nimem_ee(_nimem_s(s)); // Wrap JS exception to nim exception
-            }
-            else {
-                throw e; // Propagate nim exception
-            }
-        };
-        """)
+            g._nimem_e = function(e) {
+                // This function is called when wrapped function has thrown an exception.
+                // If exception is originated from nim code, it is propagated further.
+                // If exception is originated from JS code, it is rethrown as nim exception.
+                if (typeof e !== 'number' && e !== 'longjmp') {
+                    var s = "" + e.message;
+                    if (e.stack) s += ": " + e.stack;
+                    _nimem_ee(_nimem_s(s)); // Wrap JS exception to nim exception
+                }
+                else {
+                    throw e; // Propagate nim exception
+                }
+            };
+            """)
+    else:
+        proc initEmbindEnv() =
+            discard EM_ASM_INT("""
+            var g = ((typeof window) === 'undefined') ? global : window;
+            g._nimem_o = {0: null};
+            g._nimem_i = 0;
+            g._nimem_w = function(o) {
+                // Wrap a JS object `o` so that it can be used in emscripten
+                // functions. Returns an int handle to the wrapped object.
+                if (o === null) return 0;
+                g._nimem_o[++g._nimem_i] = o;
+                return g._nimem_i;
+            };
+
+            g._nimem_s = function(s) {
+                // Wrap JS string `s` to nim string. Returns address of the
+                // resulting nim string.
+                var l = s.length;
+                var b = g._nimm.exports.nimem_ps(l);
+                if (l != 0) {
+                    var bb = g._nimm.exports.nimem_sb(b);
+                    var mm = new Int8Array(g._nimm.exports.memory.buffer);
+                    for (i = 0; i < l; ++ i) {
+                        mm[bb + i] = s.charCodeAt(i);
+                    }
+                }
+                return b;
+            };
+
+            g._nimem_e = function(e) {
+                // This function is called when wrapped function has thrown an exception.
+                // If exception is originated from nim code, it is propagated further.
+                // If exception is originated from JS code, it is rethrown as nim exception.
+                if (typeof e !== 'number' && e !== 'longjmp') {
+                    var s = "" + e.message;
+                    if (e.stack) s += ": " + e.stack;
+                    g._nimm.exports.nimem_ee(_nimem_s(s)); // Wrap JS exception to nim exception
+                }
+                else {
+                    throw e; // Propagate nim exception
+                }
+            };
+            g.UTF8ToString = g._nimsj;
+            """)
 
     initEmbindEnv()
 

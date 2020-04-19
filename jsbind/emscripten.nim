@@ -2,7 +2,7 @@ when not defined(emscripten):
     {.error: "emscripten module may be imported only when compiling to emscripten target".}
 
 import macros
-import minify
+import wasmrt/minify
 
 type
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE* = cint
@@ -415,33 +415,13 @@ proc cTypeName(T: typedesc): string =
     else:
         {.error: "Ensupported type: " & $T.}
 
-proc escapeJs(s: string, escapeDollarWith = "$"): string {.compileTime.} =
-    result = ""
-    for c in s:
-        case c
-        of '\a': result.add "\\a" # \x07
-        of '\b': result.add "\\b" # \x08
-        of '\t': result.add "\\t" # \x09
-        of '\L': result.add "\\n" # \x0A
-        of '\r': result.add "\\r" # \x0A
-        of '\v': result.add "\\v" # \x0B
-        of '\f': result.add "\\f" # \x0C
-        of '\e': result.add "\\e" # \x1B
-        of '\\': result.add("\\\\")
-        of '\'': result.add("\\'")
-        of '\"': result.add("\\\"")
-        of '$': result.add(escapeDollarWith)
-        else: result.add(c)
-
 proc declareEmJsExporter(cName, paramStr, jsImpl: static[string]) =
     const code = jsImpl.minifyJs().escapeJs()
     proc theExporter() {.importc: cName, codegenDecl: """__attribute__((used, visibility("default"))) const char* """ & cName & "() { return \"(" & paramStr & ")<::>{" & code & "}\"; }\n".}
     theExporter()
 
-macro EM_JS*(p: untyped): untyped =
+macro EM_JS*(jsImpl: string, p: untyped): untyped =
     p.expectKind(nnkProcDef)
-    let jsImpl = p.body.skipStmtList()
-    jsImpl.expectKind(nnkStrLit)
     var procName: string
     when not defined(release):
         procName = $p.name & "_"
@@ -491,9 +471,9 @@ when not oldEmAsm:
             theCall.add(a)
             inc i
 
-        let theProc = newProc(prcName, nimProcArgs, newLit(code), nnkProcDef)
+        let theProc = newProc(prcName, nimProcArgs, newEmptyNode(), nnkProcDef)
         result = newNimNode(nnkStmtListExpr)
-        result.add(newCall(bindSym"EM_JS", theProc))
+        result.add(newCall(bindSym"EM_JS", newLit(code), theProc))
         result.add(theCall)
 
     macro EM_ASM_INT*(code: static[string], args: varargs[typed]): cint =
