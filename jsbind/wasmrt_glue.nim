@@ -6,7 +6,7 @@ template EM_JS*(s: string, p: untyped) = importwasm(s, p)
 var counter {.compileTime.} = 0
 
 proc emAsmAux*(code: string, args: NimNode, resTypeName: string): NimNode =
-    let prcName = genSym(nskProc, "emasm" & $counter)
+    let prcName = ident("emasm" & $counter) #genSym(nskProc, "emasm" & $counter)
     inc counter
     var code = code
     var nimProcArgs: seq[NimNode]
@@ -22,7 +22,7 @@ proc emAsmAux*(code: string, args: NimNode, resTypeName: string): NimNode =
 
     let theProc = newProc(prcName, nimProcArgs, newEmptyNode(), nnkProcDef)
     result = newNimNode(nnkStmtListExpr)
-    result.add(newCall(bindSym"EM_JS", newLit(code), theProc))
+    result.add(newCall(bindSym"importwasm", newLit(code), theProc))
     result.add(theCall)
 
 macro EM_ASM_INT*(code: static[string], args: varargs[typed]): cint =

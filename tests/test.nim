@@ -1,18 +1,32 @@
 import ../jsbind
-import ../jsbind/emscripten
+
+when defined(emscripten):
+    import ../jsbind/emscripten
+else:
+    import ../jsbind/wasmrt_glue
+
 import strutils
 proc setup() =
     discard EM_ASM_INT """
-    global.raiseJSException = function() {
+    var g = ((typeof window) === 'undefined') ? global : window;
+    g.raiseJSException = function() {
         throw new Error("JS Exception");
     };
 
-    global.callNimFunc = function(f) {
+    g.callNimFunc = function(f) {
         f();
     };
 
-    global.callNimFuncAfterTimeout = function(f) {
+    g.getSomeString = function() {
+        return "hello";
+    };
+
+    g.callNimFuncAfterTimeout = function(f) {
         setTimeout(f, 1);
+    };
+
+    g.consoleLog = function(f) {
+        console.log(f);
     };
     """
 
@@ -23,11 +37,17 @@ type Global = ref object of JSObj
 proc raiseJSException(g: Global) {.jsImport.}
 proc callNimFunc(g: Global, p: proc()) {.jsImport.}
 proc callNimFuncAfterTimeout(g: Global, p: proc()) {.jsImport.}
+proc getString(): string {.jsImportgWithName: "getSomeString".}
+proc consoleLog(s: jsstring) {.jsImportgWithName:"(function(a){console.log(a)})".}
 
 proc runTest() =
-    GC_disable()
+    when not defined(gcDestructors):
+        GC_disable()
 
     let g = globalEmbindObject(Global, "global")
+
+    doAssert(getString() == "hello")
+
     block: # We should catch exceptions coming from JS
         var msg = ""
         try:
@@ -59,6 +79,9 @@ proc runTest() =
             doAssert(false)
         onUnhandledException = nil
 
-    GC_enable()
+    consoleLog("Test complete!")
+
+    when not defined(gcDestructors):
+        GC_enable()
 
 runTest()

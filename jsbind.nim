@@ -55,18 +55,32 @@ elif defined(emscripten) or defined(wasm):
         import jsbind/emscripten
     else:
         import jsbind/wasmrt_glue
+        import wasmrt
 
     type JSObj* = ref object of RootObj
         p*: cint # Internal JS handle
     type jsstring* = string
 
-    proc nimem_ps(s: cint): string {.EMSCRIPTEN_KEEPALIVE.} = newString(s)
-    proc nimem_sb(s: string): pointer {.EMSCRIPTEN_KEEPALIVE.} = unsafeAddr s[0]
+    when defined(gcDestructors):
+        proc nimem_ps(s: cint): ref string {.EMSCRIPTEN_KEEPALIVE.} =
+            result.new
+            result[] = newString(s)
 
-    proc nimem_ee(s: string) {.EMSCRIPTEN_KEEPALIVE.} =
-        # This function is called when wrapped js func has thrown a JS exception
-        # We need to rethrow it as nim exception
-        raise newException(Exception, s)
+        proc nimem_sb(s: ref string): pointer {.EMSCRIPTEN_KEEPALIVE.} =
+            addr s[][0]
+
+        proc nimem_ee(s: ref string) {.EMSCRIPTEN_KEEPALIVE.} =
+            # This function is called when wrapped js func has thrown a JS exception
+            # We need to rethrow it as nim exception
+            raise newException(Exception, s[])
+    else:
+        proc nimem_ps(s: cint): string {.EMSCRIPTEN_KEEPALIVE.} = newString(s)
+        proc nimem_sb(s: string): pointer {.EMSCRIPTEN_KEEPALIVE.} = unsafeAddr s[0]
+
+        proc nimem_ee(s: string) {.EMSCRIPTEN_KEEPALIVE.} =
+            # This function is called when wrapped js func has thrown a JS exception
+            # We need to rethrow it as nim exception
+            raise newException(Exception, s)
 
     when defined(emscripten):
         proc initEmbindEnv() =
@@ -108,8 +122,7 @@ elif defined(emscripten) or defined(wasm):
             };
             """)
     else:
-        proc initEmbindEnv() =
-            discard EM_ASM_INT("""
+        proc initEmbindEnv() {.importwasm: """
             var g = ((typeof window) === 'undefined') ? global : window;
             g._nimem_o = {0: null};
             g._nimem_i = 0;
@@ -117,7 +130,8 @@ elif defined(emscripten) or defined(wasm):
                 // Wrap a JS object `o` so that it can be used in emscripten
                 // functions. Returns an int handle to the wrapped object.
                 if (o === null) return 0;
-                g._nimem_o[++g._nimem_i] = o;
+                while(g._nimem_o[++g._nimem_i] !== undefined);
+                g._nimem_o[g._nimem_i] = o;
                 return g._nimem_i;
             };
 
@@ -125,10 +139,10 @@ elif defined(emscripten) or defined(wasm):
                 // Wrap JS string `s` to nim string. Returns address of the
                 // resulting nim string.
                 var l = s.length;
-                var b = g._nimm.exports.nimem_ps(l);
+                var b = g._nime.nimem_ps(l);
                 if (l != 0) {
-                    var bb = g._nimm.exports.nimem_sb(b);
-                    var mm = new Int8Array(g._nimm.exports.memory.buffer);
+                    var bb = g._nime.nimem_sb(b);
+                    var mm = new Int8Array(g._nime.memory.buffer);
                     for (i = 0; i < l; ++ i) {
                         mm[bb + i] = s.charCodeAt(i);
                     }
@@ -136,27 +150,37 @@ elif defined(emscripten) or defined(wasm):
                 return b;
             };
 
+            g._nimem_p = function(p) {
+                // Returns pointer value at address p
+                return new Int32Array(g._nime.memory.buffer)[p >> 2];
+            };
+
             g._nimem_e = function(e) {
                 // This function is called when wrapped function has thrown an exception.
                 // If exception is originated from nim code, it is propagated further.
                 // If exception is originated from JS code, it is rethrown as nim exception.
                 if (typeof e !== 'number' && e !== 'longjmp') {
-                    var s = "" + e.message;
-                    if (e.stack) s += ": " + e.stack;
-                    g._nimm.exports.nimem_ee(_nimem_s(s)); // Wrap JS exception to nim exception
+                    var s = '' + e.message;
+                    if (e.stack) s += ': ' + e.stack;
+                    g._nime.nimem_ee(_nimem_s(s)); // Wrap JS exception to nim exception
                 }
-                else {
+                else
                     throw e; // Propagate nim exception
-                }
             };
-            g.UTF8ToString = g._nimsj;
-            """)
+            g.UTF8ToString = g._nimsj; // _nimsj is defined by wasmrt
+            """.}
 
     initEmbindEnv()
 
     {.push stackTrace: off.}
-    proc finalizeEmbindObject(o: JSObj) =
-        discard EM_ASM_INT("delete _nimem_o[$0]", o.p)
+    when defined(emscripten):
+        proc finalizeEmbindObject(o: JSObj) =
+            discard EM_ASM_INT("delete _nimem_o[$0]", o.p)
+    else:
+        proc finalizeAux(p: cint) {.importwasm: "delete _nimem_o[p]".}
+
+        proc finalizeEmbindObject(o: JSObj) =
+            finalizeAux(o.p)
 
     proc newEmbindObject(t: typedesc, emref: cint): t {.inline.} =
         result.new(cast[proc(o: t){.nimcall.}](finalizeEmbindObject))
@@ -190,7 +214,10 @@ elif defined(emscripten) or defined(wasm):
         when T is JSObj:
             if tmp != 0: result = newEmbindObject(T, tmp)
         elif T is string:
-            result = cast[string](tmp)
+            when defined(gcDestructors):
+                result = cast[ref string](tmp)[]
+            else:
+                result = cast[string](tmp)
         else:
             result = T(tmp)
 
@@ -248,22 +275,35 @@ elif defined(emscripten) or defined(wasm):
 
     # const wrapDynCallInTryCatch = false
 
-    proc unpackFunctionArg(jsParamName: string, argsSigParts, argDefsParts, argForwardParts: openarray[string], isClosure: bool): string {.compileTime.} =
-        let argsSig = "v" & argsSigParts.join()
+    proc unpackFunctionArg(jsParamName, argsSig: string, argDefsParts, argForwardParts: openarray[string], isClosure: bool): string {.compileTime.} =
         let argDefs = argDefsParts.join(",")
-        let argForwards = argForwardParts.join(",")
         var dynCall = ""
-        if isClosure:
-            let argForwardsWithEnv = (@argForwardParts & "b").join(",")
-            dynCall = "dynCall(b?'" & argsSig & "i':'" & argsSig & "',a,b?[" & argForwardsWithEnv & "]:[" & argForwards & "])"
+        when defined(emscripten):
+            let argForwards = argForwardParts.join(",")
+            if isClosure:
+                let argForwardsWithEnv = (@argForwardParts & "b").join(",")
+                dynCall = "dynCall(b?'" & argsSig & "i':'" & argsSig & "',a,b?[" & argForwardsWithEnv & "]:[" & argForwards & "])"
+            else:
+                dynCall = "dynCall('" & argsSig & "'," & jsParamName & ",[" & argForwards & "])"
         else:
-            dynCall = "dynCall('" & argsSig & "'," & jsParamName & ",[" & argForwards & "])"
+            if isClosure:
+                let argForwards = ("a" & @argForwardParts).join(",")
+                let argForwardsWithEnv = (@argForwardParts & "b").join(",")
+                dynCall = "(b?_nime._d" & argsSig & "i(" & argForwardsWithEnv & "):_nime._d" & argsSig & "(" & argForwards & "))"
+            else:
+                let argForwards = (jsParamName & @argForwardParts).join(",")
+                dynCall = "_nime._d" & argsSig & "(" & argForwards & ")"
+
 
         # if wrapDynCallInTryCatch:
         #     dynCall = "try{" & dynCall & "}catch(e){_nimem_e(e);}"
 
         if isClosure:
-            return "function(a,b){return a?function(" & argDefs & "){" & dynCall & "}:null}(getValue(" & jsParamName & ", '*'), getValue(" & jsParamName & "+4, '*'))"
+            when defined(emscripten):
+                return "function(a,b){return a?function(" & argDefs & "){" & dynCall & "}:null}(getValue(" & jsParamName & ", '*'), getValue(" & jsParamName & "+4, '*'))"
+            else:
+                return "function(a,b){return a?function(" & argDefs & "){" & dynCall & "}:null}(_nimem_p(" & jsParamName & "), _nimem_p(" & jsParamName & "+4))"
+
         else:
             return jsParamName & "?function(" & argDefs & "){" & dynCall & "}:null"
 
@@ -276,14 +316,24 @@ elif defined(emscripten) or defined(wasm):
         elif type(arg) is JSObj:
             "_nimem_o[" & jsParamName & "]"
         elif type(arg) is (proc):
+            const argsSig = "v" & join(forEveryArg(arg, jsArgSignature))
             const fn = unpackFunctionArg(jsParamName,
-                forEveryArg(arg, jsArgSignature),
+                argsSig,
                 forEveryArg(arg, jsArgDef),
                 forEveryArg(arg, jsArgFwd),
                 type(arg) is proc {.closure.})
             fn
         else:
             jsParamName
+
+    template generateDyncallForArg(arg: typed) =
+        when not defined(emscripten):
+            when type(arg) is (proc):
+                const argsSig = "v" & join(forEveryArg(arg, jsArgSignature))
+                defineDyncall(argsSig)
+                when type(arg) is proc {.closure.}:
+                    const argsClosureSig = argsSig & "i"
+                    defineDyncall(argsClosureSig)
 
     proc wrapIntoPragmaScope(n: NimNode, option, value: string): NimNode =
         result = newNimNode(nnkStmtList)
@@ -302,6 +352,8 @@ elif defined(emscripten) or defined(wasm):
             setter = true
         let procName = newLit(ppName)
 
+        p.body = newNimNode(nnkStmtList)
+
         let cintCall = newCall(bindSym"EM_ASM_INT", newLit(""))
         let cdoubleCall = newCall(bindSym"EM_ASM_DOUBLE", newLit(""))
 
@@ -313,6 +365,7 @@ elif defined(emscripten) or defined(wasm):
 
             cintCall.add(newCall(bindSym"toEmPtr", firstArg))
             cdoubleCall.add(newCall(bindSym"toEmPtr", firstArg))
+            p.body.add newCall(bindSym"generateDyncallForArg", firstArg)
 
             codeNode = quote do:
                 unpackArgCode(0, `firstArg`)
@@ -333,6 +386,8 @@ elif defined(emscripten) or defined(wasm):
             let argName = argNames[i]
             cintCall.add(newCall(bindSym"toEmPtr", argName))
             cdoubleCall.add(newCall(bindSym"toEmPtr", argName))
+            p.body.add newCall(bindSym"generateDyncallForArg", argName)
+
             if i != argIndexStart:
                 codeNode = quote do:
                     `codeNode` & ","
@@ -354,9 +409,9 @@ elif defined(emscripten) or defined(wasm):
         cintCall[1] = codeNode
         cdoubleCall[1] = codeNode
 
-        p.body = newCall(bindSym"emAsmImpl", cintCall, cdoubleCall)
+        p.body.add newCall(bindSym"emAsmImpl", cintCall, cdoubleCall)
         p.addPragma(newIdentNode("inline"))
-        #echo repr(p)
+        # echo repr(p)
         result = wrapIntoPragmaScope(p, "stackTrace", "off")
 
     template jsRef*(e: typed) =
