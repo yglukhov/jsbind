@@ -25,7 +25,6 @@ type EmscriptenWebGLContextAttributes* = object
     enableExtensionsByDefault*: EM_BOOL
 
 type EmscriptenMouseEvent* = object
-    timestamp*: cdouble
     screenX*: clong
     screenY*: clong
     clientX*: clong
