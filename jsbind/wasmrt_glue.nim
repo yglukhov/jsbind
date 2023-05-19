@@ -8,7 +8,6 @@ var counter {.compileTime.} = 0
 proc emAsmAux*(code: string, args: NimNode, resTypeName: string): NimNode =
     let prcName = ident("emasm" & $counter) #genSym(nskProc, "emasm" & $counter)
     inc counter
-    var code = code
     var nimProcArgs: seq[NimNode]
     let theCall = newCall(prcName)
     nimProcArgs.add ident(resTypeName)
@@ -16,13 +15,12 @@ proc emAsmAux*(code: string, args: NimNode, resTypeName: string): NimNode =
     for a in args:
         let argTyp = newCall(ident"typeof", a)
         nimProcArgs.add(newIdentDefs(ident("a" & $i), argTyp))
-        code = code.replace("$" & $i, "a" & $i)
         theCall.add(a)
         inc i
 
     let theProc = newProc(prcName, nimProcArgs, newEmptyNode(), nnkProcDef)
     result = newNimNode(nnkStmtListExpr)
-    result.add(newCall(bindSym"importwasm", newLit(code), theProc))
+    result.add(newCall(bindSym"importwasmraw", newLit(code), theProc))
     result.add(theCall)
 
 macro EM_ASM_INT*(code: static[string], args: varargs[typed]): cint =

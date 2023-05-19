@@ -122,18 +122,10 @@ elif defined(emscripten) or defined(wasm):
             };
             """)
     else:
-        proc initEmbindEnv() {.importwasm: """
-            var g = ((typeof window) === 'undefined') ? global : window;
-            g._nimem_o = {0: null};
-            g._nimem_i = 0;
-            g._nimem_w = function(o) {
-                // Wrap a JS object `o` so that it can be used in emscripten
-                // functions. Returns an int handle to the wrapped object.
-                if (o === null) return 0;
-                while(g._nimem_o[++g._nimem_i] !== undefined);
-                g._nimem_o[g._nimem_i] = o;
-                return g._nimem_i;
-            };
+        proc initEmbindEnv() {.importwasmraw: """
+            var g = globalThis;
+            g._nimem_o = _nimo; // Defined in wasmrt
+            g._nimem_w = _nimok; // Defined in wasmrt
 
             g._nimem_s = function(s) {
                 // Wrap JS string `s` to nim string. Returns address of the
@@ -177,10 +169,8 @@ elif defined(emscripten) or defined(wasm):
         proc finalizeEmbindObject(o: JSObj) =
             discard EM_ASM_INT("delete _nimem_o[$0]", o.p)
     else:
-        proc finalizeAux(p: cint) {.importwasm: "delete _nimem_o[p]".}
-
         proc finalizeEmbindObject(o: JSObj) =
-            finalizeAux(o.p)
+            delete(cast[wasmrt.JSRef](o.p))
 
     proc newEmbindObject(t: typedesc, emref: cint): t {.inline.} =
         result.new(cast[proc(o: t){.nimcall.}](finalizeEmbindObject))
